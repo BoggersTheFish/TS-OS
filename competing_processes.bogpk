@@ -1,0 +1,18 @@
+{
+  "processes": [
+    {
+      "pid": 0,
+      "pos": [-0.5, 0.0, 0.0],
+      "amplitude": 3.0,
+      "phase": 0.0,
+      "program": []
+    },
+    {
+      "pid": 1,
+      "pos": [0.5, 0.0, 0.0],
+      "amplitude": 1.0,
+      "phase": 0.0,
+      "program": []
+    }
+  ]
+}
