@@ -68,7 +68,13 @@ class IPCRecord:
 
 class WeightedSpatialAllocator:
     def allocate(self, kernel: "Kernel") -> None:
-        if not kernel.processes or not [p for p in kernel.processes.values() if p.status != ProcessStatus.TERMINATED and p.amplitude > 0]:
+        active = [
+            p
+            for p in kernel.processes.values()
+            if p.status not in {ProcessStatus.SUSPENDED, ProcessStatus.TERMINATED}
+            and p.amplitude > 0
+        ]
+        if not active:
             kernel.voxel_ownership.fill(UNOWNED)
             for p in kernel.processes.values():
                 p.territory_size = 0

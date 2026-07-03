@@ -7,24 +7,21 @@ from pathlib import Path
 from bogvm.formats import read_json, trace_to_json, validate_trace_json, write_canonical_json
 from bogvm.receipts import verify_receipt_chain
 from tsos.bootloader import boot_package
+from tsos.persistence import load_bogstate, save_bogstate
 
-SESSION = Path(".tsos/session.json")
+SESSION = Path(".tsos/session.bogstate")
 TRACE_DIR = Path(".tsos/traces")
 
 
-def _save_session(package: str, ticks: int) -> None:
+def _save_session(package: str, kernel) -> None:
     SESSION.parent.mkdir(exist_ok=True)
-    write_canonical_json(SESSION, {"format": "tsos-session", "schema_version": 0, "package": package, "ticks": ticks})
+    save_bogstate(SESSION, kernel, package)
 
 
 def _load_session():
     if not SESSION.exists():
         raise SystemExit("no booted package; run: ts boot <package>")
-    obj = read_json(SESSION)
-    kernel = boot_package(obj["package"])
-    for _ in range(int(obj["ticks"])):
-        kernel.tick()
-    return obj, kernel
+    return load_bogstate(SESSION)
 
 
 def _write_traces(kernel) -> None:
@@ -35,7 +32,7 @@ def _write_traces(kernel) -> None:
 
 def cmd_boot(args) -> int:
     kernel = boot_package(args.package)
-    _save_session(args.package, 0)
+    _save_session(args.package, kernel)
     _write_traces(kernel)
     print(f"booted: {args.package}")
     print(f"processes: {len(kernel.processes)}")
@@ -50,11 +47,10 @@ def cmd_ps(args) -> int:
 
 
 def cmd_step(args) -> int:
-    session, kernel = _load_session()
+    package, kernel = _load_session()
     for _ in range(args.count):
         kernel.tick()
-    session["ticks"] = int(session["ticks"]) + args.count
-    _save_session(session["package"], session["ticks"])
+    _save_session(package, kernel)
     _write_traces(kernel)
     print(f"runtime_tick: {kernel.runtime_tick}")
     for pid, p in kernel.processes.items():
@@ -65,11 +61,9 @@ def cmd_step(args) -> int:
 
 
 def cmd_run(args) -> int:
-    session, kernel = _load_session()
-    before = kernel.runtime_tick
+    package, kernel = _load_session()
     kernel.run(args.max_steps)
-    session["ticks"] = int(session["ticks"]) + (kernel.runtime_tick - before)
-    _save_session(session["package"], session["ticks"])
+    _save_session(package, kernel)
     _write_traces(kernel)
     for pid, p in kernel.processes.items():
         for value in p.output_events:
@@ -115,9 +109,9 @@ def cmd_verify_trace(args) -> int:
 
 
 def cmd_status_change(args, action: str) -> int:
-    session, kernel = _load_session()
+    package, kernel = _load_session()
     getattr(kernel, action)(int(args.pid))
-    _save_session(session["package"], session["ticks"])
+    _save_session(package, kernel)
     print(f"pid {args.pid}: {action.upper()}")
     return 0
 
