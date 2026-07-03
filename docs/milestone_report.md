@@ -41,7 +41,7 @@ Old root scripts, `core/`, `utils/`, `experiments/`, generated graph/output file
 
 ## Test Counts
 
-Final local result: `24 passed`.
+Current local result after CLI lifecycle and field-authority tests: `32 passed`.
 
 ## Exact Commands Executed
 
@@ -62,6 +62,11 @@ python3 -m venv .venv
 .venv/bin/ts boot examples/addition_process.bogpkg
 .venv/bin/ts run
 .venv/bin/ts verify-trace .tsos/traces/pid-0.bogtrace
+.venv/bin/ts boot examples/addition_process.bogpkg --driver wave --threshold 0.5
+.venv/bin/ts step 1
+.venv/bin/ts ps
+.venv/bin/ts boot examples/addition_process.bogpkg --driver wave --threshold 0.01
+.venv/bin/ts run
 ```
 
 ## Addition Transcript
@@ -82,11 +87,32 @@ Final register state: `[13, 10, 23, 0]`.
 
 Receipt-chain verification result: `PASS`.
 
+## Follow-up Field Authority Patch
+
+After the v0.1 milestone, the CLI replay-only session bug was fixed with `.bogstate` persistence. A first field-authority patch now connects `FieldRuntime` to `Kernel.tick()` and makes `WaveThresholdExecutionDriver` consume measured field samples at process positions.
+
+Observed behavior:
+
+```text
+ts boot examples/addition_process.bogpkg --driver wave --threshold 0.5
+ts step 1
+ts ps
+0 READY pc=0 steps=0 outputs=[]
+
+ts boot examples/addition_process.bogpkg --driver wave --threshold 0.01
+ts run
+output: 23
+state: HALTED
+trace verification: PASS
+```
+
+The high threshold blocks VM execution; the low threshold permits execution from measured field state.
+
 ## Remaining Limitations
 
-- The canonical VM is clocked; wave-threshold timing remains experimental.
+- The canonical VM remains an ordinary integer VM; field authority currently controls timing, not instruction semantics.
 - GUI frontends are archived and not yet adapted to the new CLI/API surface.
-- Field runtime is centralized, but cross-platform bitwise floating reproducibility is not claimed.
+- Field runtime is centralized and measured by the kernel, but cross-platform bitwise floating reproducibility is not claimed.
 - Topology tests cover Hessian typing and serialization stability, not full saddle-manifold extraction.
 
 ## Next Recommended Milestone

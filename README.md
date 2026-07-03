@@ -13,13 +13,13 @@ TS-OS is now anchored by a deterministic BOGVM runtime path:
 - Process statuses: `CREATED`, `READY`, `RUNNING`, `WAITING`, `SUSPENDED`, `HALTED`, `FAULTED`, `TERMINATED`.
 - CLI commands for boot, run, step, inspect, registers, memory, receipts, trace verification, suspend, resume, kill, field status, and graph status.
 - Shared Allen-Cahn field runtime with explicit `NEUMANN` and `PERIODIC` boundary modes.
+- Experimental measured-field wave-threshold execution driver.
 - Topology candidate typing using measured gradient and Hessian signatures.
 
 ## Experimental / Legacy
 
 Archived under `legacy/experiments/`:
 
-- wave-triggered execution;
 - prior PyGame and PyQt desktop demonstrations;
 - phase-derived process allocation experiments;
 - prior cube/topology scripts with geometry-specific assumptions;
@@ -48,6 +48,21 @@ pid: 0
 state: HALTED
 registers: [13, 10, 23, 0]
 trace verification: PASS
+```
+
+Field-gated execution can be tested with:
+
+```bash
+ts boot examples/addition_process.bogpkg --driver wave --threshold 0.5
+ts step 1
+ts ps
+```
+
+The high threshold keeps the process at `pc=0`. A lower threshold lets measured field state authorize execution:
+
+```bash
+ts boot examples/addition_process.bogpkg --driver wave --threshold 0.01
+ts run
 ```
 
 ## Development Checks

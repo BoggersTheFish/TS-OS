@@ -15,5 +15,5 @@ Deterministic guarantees:
 Non-guarantees in this milestone:
 
 - floating-point Allen-Cahn evolution is centralized and tested for boundary semantics, but cross-platform bitwise equality is not claimed;
-- wave-triggered execution is experimental timing only and does not redefine instruction meanings;
+- wave-threshold execution is measured timing only and does not redefine instruction meanings;
 - prior cube/topology scripts are archived as experiments and are not claimed as autonomous discovery.

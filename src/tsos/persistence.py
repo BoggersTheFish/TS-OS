@@ -6,8 +6,10 @@ from typing import Any
 from bogvm.faults import BOGFault
 from bogvm.formats import bogstate_json, read_json
 from bogvm.receipts import ExecutionReceipt
+from tsfield import FieldRuntime
 
 from .bootloader import boot_package
+from .drivers import ClockedExecutionDriver, WaveThresholdExecutionDriver
 from .kernel import Kernel, ProcessStatus
 
 
@@ -30,6 +32,25 @@ def kernel_from_bogstate(obj: dict[str, Any]) -> tuple[str, Kernel]:
     kernel = boot_package(package_path)
     kernel.runtime_tick = int(state["runtime_tick"])
     kernel.kernel_receipts = list(state.get("kernel_receipts", []))
+    field_state = state.get("field")
+    if field_state is not None:
+        kernel.field_runtime = FieldRuntime.from_snapshot(field_state)
+        kernel.field_enabled = True
+        kernel.Phi = kernel.field_runtime.phi.copy()
+    else:
+        kernel.field_runtime = None
+        kernel.field_enabled = False
+
+    driver_state = state.get("driver", {"kind": "clocked", "instructions_per_tick": 1})
+    if driver_state["kind"] == "wave_threshold":
+        kernel.driver = WaveThresholdExecutionDriver(
+            threshold=float(driver_state["threshold"]),
+            instructions_per_tick=int(driver_state["instructions_per_tick"]),
+        )
+    elif driver_state["kind"] == "clocked":
+        kernel.driver = ClockedExecutionDriver(
+            instructions_per_tick=int(driver_state["instructions_per_tick"])
+        )
 
     for pid_text, process_state in state["processes"].items():
         pid = int(pid_text)

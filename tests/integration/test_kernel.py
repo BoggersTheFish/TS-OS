@@ -3,6 +3,8 @@ import numpy as np
 from bogvm.formats import BogPkg, read_json
 from bogvm.receipts import verify_receipt_chain
 from tsos import Kernel, ProcessStatus
+from tsos.drivers import WaveThresholdExecutionDriver
+from tsos.persistence import kernel_from_bogstate, kernel_to_bogstate
 
 
 def boot_addition():
@@ -65,3 +67,41 @@ def test_ipc_cleared_when_pair_disappears():
     kernel.kill(1)
     kernel.tick()
     assert kernel.ipc_records == {}
+
+
+def test_field_runtime_steps_and_is_receipted():
+    kernel = Kernel(N=6, field_enabled=True)
+    kernel.boot_package(BogPkg.from_json(read_json("examples/addition_process.bogpkg")))
+    receipt = kernel.tick()
+    assert receipt["field"] is not None
+    assert kernel.field_runtime is not None
+    assert kernel.field_runtime.step_counter == 1
+    assert receipt["field_samples"]["0"] > 0
+
+
+def test_wave_threshold_driver_blocks_below_measured_field_threshold():
+    kernel = Kernel(N=6, field_enabled=True, driver=WaveThresholdExecutionDriver(threshold=0.5))
+    kernel.boot_package(BogPkg.from_json(read_json("examples/addition_process.bogpkg")))
+    kernel.tick()
+    assert kernel.processes[0].machine.pc == 0
+    assert kernel.kernel_receipts[-1]["field_samples"]["0"] < 0.5
+
+
+def test_wave_threshold_driver_executes_from_measured_field():
+    kernel = Kernel(N=6, field_enabled=True, driver=WaveThresholdExecutionDriver(threshold=0.01))
+    kernel.boot_package(BogPkg.from_json(read_json("examples/addition_process.bogpkg")))
+    kernel.tick()
+    assert kernel.processes[0].machine.pc == 1
+    assert kernel.processes[0].machine.registers[0] == 13
+
+
+def test_bogstate_persists_field_and_wave_driver():
+    kernel = Kernel(N=6, field_enabled=True, driver=WaveThresholdExecutionDriver(threshold=0.01))
+    kernel.boot_package(BogPkg.from_json(read_json("examples/addition_process.bogpkg")))
+    kernel.tick()
+    state = kernel_to_bogstate(kernel, "examples/addition_process.bogpkg")
+    _, restored = kernel_from_bogstate(state)
+    assert restored.field_runtime is not None
+    assert restored.field_runtime.step_counter == 1
+    assert isinstance(restored.driver, WaveThresholdExecutionDriver)
+    assert restored.processes[0].machine.pc == 1

@@ -56,3 +56,19 @@ def test_cli_kill_persists_and_prevents_execution(tmp_path, monkeypatch):
     assert process.status.value == "TERMINATED"
     assert process.machine.step_counter == 0
     assert process.output_events == []
+
+
+def test_cli_wave_driver_uses_persisted_field_state(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["boot", str(PACKAGE), "--driver", "wave", "--threshold", "0.01"]) == 0
+    assert main(["step", "1"]) == 0
+    assert main(["field-status"]) == 0
+    output = capsys.readouterr().out
+    assert "field_enabled: True" in output
+    assert "field_step: 1" in output
+
+    _, kernel = load_bogstate(".tsos/session.bogstate")
+    assert kernel.processes[0].machine.pc == 1
+    assert kernel.field_runtime is not None
+    assert kernel.field_runtime.step_counter == 1

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
+from typing import Any, cast
 
 import numpy as np
 
@@ -71,3 +72,25 @@ class FieldRuntime:
         }
         self.step_counter += 1
         return receipt
+
+    def snapshot(self) -> dict[str, object]:
+        return {
+            "runtime": "tsfield-v0",
+            "configuration": {
+                **asdict(self.config),
+                "boundary": self.config.boundary.value,
+            },
+            "step_counter": self.step_counter,
+            "shape": list(self.phi.shape),
+            "phi": self.phi.reshape(-1).tolist(),
+        }
+
+    @classmethod
+    def from_snapshot(cls, snapshot: dict[str, object]) -> "FieldRuntime":
+        config_data = dict(cast(dict[str, Any], snapshot["configuration"]))
+        config_data["boundary"] = BoundaryMode(str(config_data["boundary"]))
+        runtime = cls(FieldConfiguration(**config_data))
+        runtime.step_counter = int(cast(int, snapshot["step_counter"]))
+        shape = tuple(int(v) for v in cast(list[int], snapshot["shape"]))
+        runtime.phi = np.array(cast(list[float], snapshot["phi"]), dtype=np.float64).reshape(shape)
+        return runtime

@@ -10,11 +10,14 @@ The canonical runtime is in `src/`.
 
 The kernel tick order is:
 
-1. execute eligible process VM instructions in PID order;
-2. collect process output events from VM receipts;
-3. synchronize process status from halted/faulted machine state;
-4. update spatial allocation using `WeightedSpatialAllocator`;
-5. clear and recompute IPC records;
-6. emit a kernel receipt.
+1. step the canonical field runtime when enabled;
+2. sample measured field values at process positions;
+3. ask the configured execution driver how many VM instructions are allowed;
+4. execute eligible process VM instructions in PID order;
+5. collect process output events from VM receipts;
+6. synchronize process status from halted/faulted machine state;
+7. update spatial allocation using `WeightedSpatialAllocator`;
+8. clear and recompute IPC records;
+9. emit a kernel receipt with field measurements and process status.
 
-Wave timing is separated from VM semantics by the execution-driver interface. The default `ClockedExecutionDriver` permits one instruction per eligible process per tick.
+Wave timing is separated from VM semantics by the execution-driver interface. The default `ClockedExecutionDriver` permits one instruction per eligible process per tick. `WaveThresholdExecutionDriver` reads the measured field sample at each process position and permits execution only when the sample is above its threshold.

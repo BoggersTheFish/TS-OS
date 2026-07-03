@@ -7,6 +7,8 @@ from pathlib import Path
 from bogvm.formats import read_json, trace_to_json, validate_trace_json, write_canonical_json
 from bogvm.receipts import verify_receipt_chain
 from tsos.bootloader import boot_package
+from tsos.drivers import ClockedExecutionDriver, WaveThresholdExecutionDriver
+from tsos.kernel import Kernel
 from tsos.persistence import load_bogstate, save_bogstate
 
 SESSION = Path(".tsos/session.bogstate")
@@ -31,11 +33,19 @@ def _write_traces(kernel) -> None:
 
 
 def cmd_boot(args) -> int:
-    kernel = boot_package(args.package)
+    if args.driver == "wave":
+        driver: ClockedExecutionDriver | WaveThresholdExecutionDriver = WaveThresholdExecutionDriver(
+            threshold=args.threshold
+        )
+    else:
+        driver = ClockedExecutionDriver()
+    kernel = boot_package(args.package, Kernel(driver=driver, field_enabled=args.field or args.driver == "wave"))
     _save_session(args.package, kernel)
     _write_traces(kernel)
     print(f"booted: {args.package}")
     print(f"processes: {len(kernel.processes)}")
+    print(f"driver: {args.driver}")
+    print(f"field_enabled: {kernel.field_enabled}")
     return 0
 
 
@@ -120,6 +130,10 @@ def cmd_field_status(args) -> int:
     _, kernel = _load_session()
     print(f"field_enabled: {kernel.field_enabled}")
     print(f"grid: {kernel.N}x{kernel.N}x{kernel.N}")
+    if kernel.field_runtime is not None:
+        print(f"field_step: {kernel.field_runtime.step_counter}")
+        print(f"field_min: {float(kernel.field_runtime.phi.min()):.9f}")
+        print(f"field_max: {float(kernel.field_runtime.phi.max()):.9f}")
     return 0
 
 
@@ -133,6 +147,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(required=True)
     p = sub.add_parser("boot")
     p.add_argument("package")
+    p.add_argument("--field", action="store_true", help="enable canonical field runtime")
+    p.add_argument("--driver", choices=["clocked", "wave"], default="clocked")
+    p.add_argument("--threshold", type=float, default=0.5)
     p.set_defaults(func=cmd_boot)
     sub.add_parser("ps").set_defaults(func=cmd_ps)
     p = sub.add_parser("step")
