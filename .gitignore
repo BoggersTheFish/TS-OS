@@ -8,6 +8,9 @@ venv/
 env/
 .env
 .gemini/
+.mypy_cache/
+.ruff_cache/
+.tsos/
 desktop.bogpk
 *.png
 ts_v2_3d_graph.json

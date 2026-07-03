@@ -1,3 +1,6 @@
-numpy>=1.20.0
-scipy>=1.7.0
-matplotlib>=3.4.0
+# Prefer the project metadata:
+#   pip install -e ".[dev]"
+#
+# Runtime-only fallback:
+numpy>=1.20
+scipy>=1.7
